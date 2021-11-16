@@ -1,0 +1,19 @@
+---
+- name: Installs BioDynaMo from source (master)
+  hosts:
+    - localhost
+  gather_facts: true
+
+  tasks:
+    - name: Install BioDynaMo from source
+      block:
+        - name: Install prerequisites
+          apt:
+            name:
+              - sudo
+              - curl
+              - git
+        - name: Execute the installer
+          environment:
+            SILENT_INSTALL: 1
+          shell: curl https://biodynamo.org/install | bash
