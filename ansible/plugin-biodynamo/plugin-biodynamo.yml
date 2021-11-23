@@ -16,4 +16,6 @@
         - name: Execute the installer
           environment:
             SILENT_INSTALL: 1
+            BDM_CMAKE_FLAGS: "CMAKE_INSTALL_PREFIX=/opt/biodynamo"
+            BDM_INSTALL: master
           shell: curl https://biodynamo.org/install | bash
