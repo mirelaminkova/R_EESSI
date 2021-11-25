@@ -3,10 +3,23 @@
   hosts:
     - localhost
   gather_facts: true
+  # necessary to execute docker commands
+  become: true
 
   tasks:
+    # Dependency of Ansible Docker community collection
+    - name: Install Docker Python SDK
+      pip:
+        name: docker
+        executable: pip3
+    - name: Install Ansible Docker community collection
+      command: ansible-galaxy collection install community.docker
+
     - name: Start the requested Docker container
       community.docker.docker_container:
         name: "{{ docker-container-name }}"
         image: "{{ docker-image }}"
         command: "{{ docker-command }}"
+        # `detach` and `tty` keep the docker container running in background
+        detach: yes
+        tty: yes
