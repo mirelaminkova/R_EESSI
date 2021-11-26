@@ -8,6 +8,7 @@
 
   tasks:
     - name: Start the requested Docker container
+      ignore_errors: yes
       community.docker.docker_container:
         name: "{{ docker-container-name }}"
         image: "{{ docker-image }}"
