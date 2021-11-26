@@ -7,14 +7,6 @@
   become: true
 
   tasks:
-    # Dependency of Ansible Docker community collection
-    - name: Install Docker Python SDK
-      pip:
-        name: docker
-        executable: pip3
-    - name: Install Ansible Docker community collection
-      command: ansible-galaxy collection install community.docker
-
     - name: Start the requested Docker container
       community.docker.docker_container:
         name: "{{ docker-container-name }}"
