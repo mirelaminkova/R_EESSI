@@ -7,6 +7,9 @@
   become: true
 
   tasks:
+    - name: Install docker
+      apt:
+        name: docker.io
     - name: Start the requested Docker container
       ignore_errors: yes
       community.docker.docker_container:
