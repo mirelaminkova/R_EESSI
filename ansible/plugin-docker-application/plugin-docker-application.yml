@@ -11,11 +11,9 @@
       apt:
         name: docker.io
     - name: Start the requested Docker container
-      ignore_errors: yes
       community.docker.docker_container:
         name: "{{ docker-container-name }}"
         image: "{{ docker-image }}"
-        command: "{{ docker-command }}"
         # `detach` and `tty` keep the docker container running in background
         detach: yes
         tty: yes
