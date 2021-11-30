@@ -12,8 +12,9 @@
         name: docker.io
     - name: Start the requested Docker container
       community.docker.docker_container:
-        name: "{{ docker-container-name }}"
-        image: "{{ docker-image }}"
+        name: "{{ docker_container_name }}"
+        image: "{{ docker_image }}"
+        command: " {{ docker_command }}"
         # `detach` and `tty` keep the docker container running in background
         detach: yes
         tty: yes
