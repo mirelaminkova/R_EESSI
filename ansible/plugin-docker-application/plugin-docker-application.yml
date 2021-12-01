@@ -10,7 +10,37 @@
     - name: Install docker
       apt:
         name: docker.io
-    - name: Start the requested Docker container
+
+    - name: Build and run container from Dockerfile
+      when: dockerfile_url != "empty"
+      block:
+        # We set the default URL to the Dockerfile to "empty" of the 
+        # `dockerfile_url` parameter
+        - name: Download Dockerfile
+          get_url:
+            url: "{{ dockerfile_url }}"
+            dest: /opt/Dockerfile
+        - name: Check that the Dockerfile exists
+          stat:
+            path: /opt/Dockerfile
+          register: stat_result_dockerfile
+        - name: Build Docker image
+          community.docker.docker_image:
+            build:
+              path: /opt
+            name: src_image
+            source: build
+          when: stat_result_dockerfile.stat.exists
+        - name: Run container with built image
+          community.docker.docker_container:
+            name: "{{ docker_container_name }}"
+            image: src_image
+            # `detach` and `tty` keep the docker container running in background
+            detach: yes
+            tty: yes
+
+    - name: Pull and run container from specified image
+      when: dockerfile_url == "empty"
       community.docker.docker_container:
         name: "{{ docker_container_name }}"
         image: "{{ docker_image }}"
