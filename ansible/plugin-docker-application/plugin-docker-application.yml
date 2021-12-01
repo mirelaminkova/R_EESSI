@@ -35,6 +35,7 @@
           community.docker.docker_container:
             name: "{{ docker_container_name }}"
             image: src_image
+            command: " {{ docker_command }}"
             # `detach` and `tty` keep the docker container running in background
             detach: yes
             tty: yes
