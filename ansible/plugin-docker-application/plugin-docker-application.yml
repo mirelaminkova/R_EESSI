@@ -6,6 +6,9 @@
   # necessary to execute docker commands
   become: true
 
+  vars:
+    dockerfile_dest: /opt/src_docker
+
   tasks:
     - name: Install docker
       apt:
@@ -19,23 +22,23 @@
         - name: Download Dockerfile
           get_url:
             url: "{{ dockerfile_url }}"
-            dest: /opt/Dockerfile
+            dest: "{{ dockerfile_dest }}/Dockerfile"
         - name: Check that the Dockerfile exists
           stat:
-            path: /opt/Dockerfile
+            path: "{{ dockerfile_dest }}/Dockerfile"
           register: stat_result_dockerfile
         - name: Build Docker image
           community.docker.docker_image:
             build:
-              path: /opt
+              path: "{{ dockerfile_dest }}"
             name: src_image
             source: build
           when: stat_result_dockerfile.stat.exists
         - name: Run container with built image
           community.docker.docker_container:
-            name: "{{ docker_container_name }}"
+            name: src_container
             image: src_image
-            command: " {{ docker_command }}"
+            command: "{{ docker_command }}"
             # `detach` and `tty` keep the docker container running in background
             detach: yes
             tty: yes
@@ -43,9 +46,9 @@
     - name: Pull and run container from specified image
       when: dockerfile_url == "empty"
       community.docker.docker_container:
-        name: "{{ docker_container_name }}"
+        name: src_container
         image: "{{ docker_image }}"
-        command: " {{ docker_command }}"
+        command: "{{ docker_command }}"
         # `detach` and `tty` keep the docker container running in background
         detach: yes
         tty: yes
