@@ -14,7 +14,7 @@
       apt:
         name: docker.io
 
-    - name: Build and run container from Dockerfile
+    - name: Build and run container from Dockerfile (if provided)
       when: dockerfile_url != "empty"
       block:
         # We set the default URL to the Dockerfile to "empty" of the 
@@ -43,8 +43,8 @@
             detach: yes
             tty: yes
 
-    - name: Pull and run container from specified image
-      when: dockerfile_url == "empty"
+    - name: Pull and run container from specified image (if provided)
+      when: dockerfile_url == "empty" && docker_image != "empty"
       community.docker.docker_container:
         name: src_container
         image: "{{ docker_image }}"
