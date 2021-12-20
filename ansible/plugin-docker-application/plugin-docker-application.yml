@@ -8,17 +8,28 @@
 
   vars:
     dockerfile_dest: /opt/src_docker
+    external_volume_dir: /data/volume_2
 
   tasks:
     - name: Install docker
       apt:
         name: docker.io
 
-    - name: Build and run container from Dockerfile (if provided)
+    - name: Check if there is an external volume attached
+      stat:
+        path: "{{ external_volume_dir }}"
+      register: is_external_volume
+
+    - name: Build image from Dockerfile (if provided)
       when: dockerfile_url != "empty"
       block:
         # We set the default URL to the Dockerfile to "empty" of the 
         # `dockerfile_url` parameter
+        - name: Create Dockerfile directory
+          file:
+            path: "{{ dockerfile_dest }}"
+            state: directory
+            mode: 755
         - name: Download Dockerfile
           get_url:
             url: "{{ dockerfile_url }}"
@@ -34,21 +45,15 @@
             name: src_image
             source: build
           when: stat_result_dockerfile.stat.exists
-        - name: Run container with built image
-          community.docker.docker_container:
-            name: src_container
-            image: src_image
-            command: "{{ docker_command }}"
-            # `detach` and `tty` keep the docker container running in background
-            detach: yes
-            tty: yes
 
-    - name: Pull and run container from specified image (if provided)
-      when: dockerfile_url == "empty" && docker_image != "empty"
+    - name: Run docker container from image
+      when: dockerfile_url != "empty" or docker_image != "empty"
       community.docker.docker_container:
         name: src_container
-        image: "{{ docker_image }}"
+        # Dockerfile image (src_image) has precedence over docker_image
+        image: "{{ 'src_image' if dockerfile_url != 'empty' else docker_image }}"
         command: "{{ docker_command }}"
         # `detach` and `tty` keep the docker container running in background
         detach: yes
         tty: yes
+        volumes: "{{ external_volume_dir + ':' + external_volume_dir if is_external_volume.stat.exists | default(false) else omit }}"
