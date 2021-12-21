@@ -10,10 +10,32 @@
     dockerfile_dest: /opt/src_docker
     external_volume_dir: /data/volume_2
 
-  tasks:
-    - name: Install docker
+    tasks:
+    - name: Install Docker
       apt:
         name: docker.io
+
+    - name: Check if GPU available
+      stat:
+        path: /usr/bin/nvidia-smi
+      register: nvidia_smi_bin
+
+    - name: Set up Docker NVIDIA driver
+      when: nvidia_smi_bin.stat.exists
+      block:
+        # We verify if this is a GPU-workspace if /usr/bin/nvidia-smi is available
+        - name: Download runtime configuration
+          shell: |
+            distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+            curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list |   sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+        - name: Install runtime
+          apt:
+            name: nvidia-container-runtime
+        - name: Restart Docker daemon
+          ansible.builtin.systemd:
+            state: restarted
+            daemon_reload: yes
+            name: docker
 
     - name: Check if there is an external volume attached
       stat:
@@ -57,3 +79,9 @@
         detach: yes
         tty: yes
         volumes: "{{ external_volume_dir + ':' + external_volume_dir if is_external_volume.stat.exists | default(false) else omit }}"
+        device_requests:
+          - # Add NVIDIA GPUs to this container
+            driver: nvidia
+            count: -1  # this means we want all
+            capabilities:
+              - gpu
