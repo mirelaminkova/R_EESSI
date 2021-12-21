@@ -9,6 +9,8 @@
   vars:
     dockerfile_dest: /opt/src_docker
     external_volume_dir: /data/volume_2
+    gpu_driver_var:
+      - {driver : "nvidia", count: -1, capabilities: ["gpu"]}
 
   tasks:
     - name: Install Docker
@@ -79,9 +81,4 @@
         detach: yes
         tty: yes
         volumes: "{{ external_volume_dir + ':' + external_volume_dir if is_external_volume.stat.exists | default(false) else omit }}"
-        device_requests:
-          - # Add NVIDIA GPUs to this container
-            driver: nvidia
-            count: -1  # this means we want all
-            capabilities:
-              - gpu
+        device_requests: "{{ gpu_driver_var if nvidia_smi_bin.stat.exists else omit }}"
