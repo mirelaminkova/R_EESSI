@@ -10,7 +10,7 @@
     dockerfile_dest: /opt/src_docker
     external_volume_dir: /data/volume_2
 
-    tasks:
+  tasks:
     - name: Install Docker
       apt:
         name: docker.io
