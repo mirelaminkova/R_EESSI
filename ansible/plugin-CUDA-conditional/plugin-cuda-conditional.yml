@@ -11,7 +11,7 @@
       setup:
 
     - name: Install CUDA toolkit when distribution is Ubuntu and workspace uses a GPU flavour
-      when: ansible_distribution == 'Ubuntu' and when 'GPU' in flavour_name
+      when: ansible_distribution == 'Ubuntu' and 'GPU' in flavour_name
       block:
 
         - name: Update the package cache and metadata
