@@ -8,7 +8,7 @@
 
   vars:
     dockerfile_dest: /opt/src_docker
-    external_volume_dir: /data/volume_2
+    external_volume_paths: []
     gpu_driver_var:
       - {driver : "nvidia", count: -1, capabilities: ["gpu"]}
 
@@ -42,10 +42,17 @@
             daemon_reload: yes
             name: docker
 
-    - name: Check if there is an external volume attached
-      stat:
-        path: "{{ external_volume_dir }}"
-      register: is_external_volume
+    - name: Find all external volumes (will be empty if no external volumes are attached)
+      find:
+        paths: /data/
+        pattern: "volumes_*"
+        file_type: directory
+      register: external_volumes
+
+    - name: Create list of strings of external volume paths
+      set_fact:
+        external_volume_paths: "{{ external_volume_paths }} + [ '{{ item.path }}' ]"
+      with_items: "{{ external_volumes.files }}"
 
     - name: Build image from Dockerfile (if provided)
       when: dockerfile_url != "empty"
@@ -83,5 +90,5 @@
         # `detach` and `tty` keep the docker container running in background
         detach: yes
         tty: yes
-        volumes: "{{ external_volume_dir + ':' + external_volume_dir if is_external_volume.stat.exists | default(false) else omit }}"
+        volumes: "{{ external_volume_paths }}"
         device_requests: "{{ gpu_driver_var if nvidia_smi_bin.stat.exists else omit }}"
