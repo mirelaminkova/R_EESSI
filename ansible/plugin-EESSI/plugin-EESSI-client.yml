@@ -13,7 +13,7 @@
 
     - name: Download EESSI installation script
       get_url:
-        url: https://github.com/EESSI/eessi-demo/blob/23da78bd7cc56332cceb9567bf67be637af91946/scripts/install_cvmfs_eessi.sh
+        url: https://raw.githubusercontent.com/EESSI/eessi-demo/23da78bd7cc56332cceb9567bf67be637af91946/scripts/install_cvmfs_eessi.sh
         dest: /tmp/install_cvmfs_eessi.sh
         mode: '0755'
 
