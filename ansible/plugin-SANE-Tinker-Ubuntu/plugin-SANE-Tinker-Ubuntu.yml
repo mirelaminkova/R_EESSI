@@ -1,0 +1,74 @@
+---
+- name: Configure XRDP for SANE
+  hosts: localhost
+  gather_facts: true
+  become: yes
+
+  tasks:
+    - name: Ensure XRDP is installed
+      apt:
+        name: xrdp
+        state: latest
+        update_cache: yes
+
+    - name: Disable drive redirection in XRDP (rdpdr)
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^rdpdr='
+        line: 'rdpdr=false'
+        create: yes
+      notify: restart xrdp
+
+    - name: Disable sound redirection in XRDP (rdpsnd)
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^rdpsnd='
+        line: 'rdpsnd=false'
+        create: yes
+      notify: restart xrdp
+
+    - name: Disable dynamic virtual channel extension in XRDP (drdynvc)
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^drdynvc='
+        line: 'drdynvc=false'
+        create: yes
+      notify: restart xrdp
+
+    - name: Disable clipboard redirection in XRDP (cliprdr)
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^cliprdr='
+        line: 'cliprdr=false'
+        create: yes
+      notify: restart xrdp
+
+    - name: Disable RemoteApp capability support in XRDP (rail)
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^rail='
+        line: 'rail=false'
+        create: yes
+      notify: restart xrdp
+
+    - name: Disable XRDP video redirection (xrdpvr)
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^xrdpvr='
+        line: 'xrdpvr=false'
+        create: yes
+      notify: restart xrdp
+
+    - name: Disable thin client utilities (tcutils)
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^tcutils='
+        line: 'tcutils=false'
+        create: yes
+      notify: restart xrdp
+
+  handlers:
+    - name: restart xrdp
+      systemd:
+        name: xrdp
+        state: restarted
