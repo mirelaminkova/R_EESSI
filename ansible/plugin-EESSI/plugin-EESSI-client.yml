@@ -53,3 +53,28 @@
 
         - name: Probe Stratum 1 servers by geo location to trigger reordering
           shell: cvmfs_talk -i pilot.eessi-hpc.org host probe geo
+
+- name: Configure node for automatic EESSI R environment initialization
+  hosts: localhost
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Create /etc/profile.d/eessi_r.sh for automatic R module loading
+      copy:
+        dest: /etc/profile.d/eessi_r.sh
+        content: |
+          #!/bin/bash
+          # /etc/profile.d/eessi_r.sh
+          # This script sets up the EESSI environment and loads the R modules automatically.
+          
+          if [ -f /cvmfs/software.eessi.io/versions/2023.06/init/bash ]; then
+              source /cvmfs/software.eessi.io/versions/2023.06/init/bash
+          fi
+          
+          # Load the R modules
+          module load R/4.4.1-gfbf-2023b
+          module load R-bundle-Bioconductor/3.18-foss-2023a-R-4.3.2
+          module load R-bundle-CRAN/2024.06-foss-2023b
+        mode: '0755'
+        owner: root
+        group: root
