@@ -2,7 +2,6 @@
 - name: Configure node for access to the EESSI stack
   hosts: localhost
   gather_facts: true
-
   tasks:
     - name: Install prerequisites
       apt:
@@ -54,18 +53,18 @@
         - name: Probe Stratum 1 servers by geo location to trigger reordering
           shell: cvmfs_talk -i pilot.eessi-hpc.org host probe geo
 
-- name: Configure node for automatic EESSI R environment initialization
+- name: Configure node for automatic EESSI environment initialization
   hosts: localhost
   become: yes
   gather_facts: yes
   tasks:
-    - name: Create /etc/profile.d/eessi_r.sh for automatic R module loading
+    - name: Create /etc/profile.d/eessi_r.sh for automatic module loading
       copy:
         dest: /etc/profile.d/eessi_r.sh
         content: |
           #!/bin/bash
           # /etc/profile.d/eessi_r.sh
-          # This script sets up the EESSI environment and loads the R modules automatically.
+          # This script sets up the EESSI environment and loads the required modules automatically.
           
           if [ -f /cvmfs/software.eessi.io/versions/2023.06/init/bash ]; then
               source /cvmfs/software.eessi.io/versions/2023.06/init/bash
@@ -75,6 +74,133 @@
           module load R/4.4.1-gfbf-2023b
           module load R-bundle-Bioconductor/3.18-foss-2023a-R-4.3.2
           module load R-bundle-CRAN/2024.06-foss-2023b
+          module load CMake/3.27.6-GCCcore-13.2.0
         mode: '0755'
         owner: root
         group: root
+
+- name: Install and configure RStudio with EESSI integration
+  hosts: localhost
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Wait for system to become reachable
+      wait_for_connection:
+        timeout: 300
+
+    - name: Gather facts for first time
+      setup:
+
+    - name: Ubuntu - Install required packages
+      when: ansible_distribution == 'Ubuntu'
+      block:
+        - name: Install required packages
+          package:
+            name:
+              - apt-transport-https
+              - dpkg-sig
+              - gdebi-core
+              - libxml2-dev
+              - libcurl4-openssl-dev
+              - libssl-dev
+              - git
+            state: present
+
+        - name: Add an apt key by id from a keyserver
+          apt_key:
+            keyserver: keyserver.ubuntu.com
+            id: E298A3A825C0D65DFD57CBB651716619E084DAB9
+
+        - name: Ensure RStudio repository is present
+          apt_repository:
+            repo: "deb https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/"
+            state: present
+
+        - name: Ensure RStudio server is installed
+          apt:
+            deb: "https://download2.rstudio.org/server/jammy/amd64/rstudio-server-2024.12.0-467-amd64.deb"
+            allow_unauthenticated: true
+
+        - name: Create nginx location block
+          copy:
+            src: r-studio.conf
+            dest: /etc/nginx/app-location-conf.d/r-studio.conf
+            mode: '0644'
+
+        - name: Add repo packagemanager in Rprofile.site
+          lineinfile:
+            path: /usr/lib/R/etc/Rprofile.site
+            regexp: '^#  options\(defaultPackages'
+            insertafter: '#  options\(defaultPackages = c\(old, "MASS"\), repos = r\)'
+            line: options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
+
+        - name: Switch off session timeout and suspending to disk
+          copy:
+            content: |
+              # R Session Configuration File
+              session-timeout-minutes=0
+              session-timeout-suspend=0
+            dest: /etc/rstudio/rsession.conf
+            mode: 0644
+
+        - name: Give all workspace users rw access to generated files
+          lineinfile:
+            path: /usr/lib/R/etc/Rprofile.site
+            line: "Sys.umask('000')"
+
+        - name: Install custom CRAN packages
+          when: cran_packages | trim | length > 0
+          command: >
+            R --slave -e '
+            install.packages(
+              pkgs=c({{ (cran_packages | split | to_json)[1:-1] }}),
+              lib="/usr/local/lib/R/site-library",
+              dependencies=TRUE
+            )'
+          register: install_pckgs_command
+
+    - name: Configure RStudio-EESSI integration
+      block:
+        - name: Copy RStudio wrapper script to ensure EESSI environment is loaded
+          copy:
+            dest: /usr/local/bin/start_rstudio.sh
+            content: |
+              #!/bin/bash
+              source /etc/profile.d/eessi_r.sh
+              exec /usr/lib/rstudio-server/bin/rserver "$@"
+            mode: '0755'
+
+        - name: Create systemd override directory for rstudio-server
+          file:
+            path: /etc/systemd/system/rstudio-server.service.d
+            state: directory
+            mode: '0755'
+
+        - name: Create systemd drop-in override file for rstudio-server
+          copy:
+            dest: /etc/systemd/system/rstudio-server.service.d/override.conf
+            content: |
+              [Service]
+              ExecStart=
+              ExecStart=/usr/local/bin/start_rstudio.sh
+      become: true
+
+    - name: Reload systemd daemon to apply drop-in configuration
+      command: systemctl daemon-reload
+      become: true
+
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+    - name: Start RStudio
+      service:
+        name: rstudio-server
+        state: started
+      register: start_rstudio
+
+    - name: Log RStudio start output
+      debug:
+        msg: 'service_url: {"url": "https://{{ ansible_host }}", "tag": "web", "description": "R-Studio"}'
+      when: start_rstudio is succeeded
