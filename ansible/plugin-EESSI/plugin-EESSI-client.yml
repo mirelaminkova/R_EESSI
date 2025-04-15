@@ -127,12 +127,6 @@
             dest: /etc/nginx/app-location-conf.d/r-studio.conf
             mode: '0644'
 
-        - name: Add repo packagemanager in Rprofile.site
-          lineinfile:
-            path: /usr/lib/R/etc/Rprofile.site
-            regexp: '^#  options\(defaultPackages'
-            insertafter: '#  options\(defaultPackages = c\(old, "MASS"\), repos = r\)'
-            line: options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
 
         - name: Switch off session timeout and suspending to disk
           copy:
@@ -143,21 +137,6 @@
             dest: /etc/rstudio/rsession.conf
             mode: 0644
 
-        - name: Give all workspace users rw access to generated files
-          lineinfile:
-            path: /usr/lib/R/etc/Rprofile.site
-            line: "Sys.umask('000')"
-
-        - name: Install custom CRAN packages
-          when: cran_packages | trim | length > 0
-          command: >
-            R --slave -e '
-            install.packages(
-              pkgs=c({{ (cran_packages | split | to_json)[1:-1] }}),
-              lib="/usr/local/lib/R/site-library",
-              dependencies=TRUE
-            )'
-          register: install_pckgs_command
 
     - name: Configure RStudio-EESSI integration
       block:
