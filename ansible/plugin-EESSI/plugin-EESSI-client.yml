@@ -137,6 +137,13 @@
             dest: /etc/rstudio/rsession.conf
             mode: 0644
 
+    - name: Ensure RStudio Server configuration file has the correct R binary path
+      become: yes
+      lineinfile:
+        path: /etc/rstudio/rserver.conf
+        regexp: '^rsession-which-r='
+        line: 'rsession-which-r=/cvmfs/software.eessi.io/versions/2023.06/software/linux/x86_64/amd/zen2/software/R/4.4.1-gfbf-2023b/bin/R'
+        create: yes
 
     - name: Configure RStudio-EESSI integration
       block:
@@ -146,6 +153,7 @@
             content: |
               #!/bin/bash
               source /etc/profile.d/eessi_r.sh
+              echo "DEBUG: RSTUDIO_WHICH_R is set to ${RSTUDIO_WHICH_R}" >&2
               exec /usr/lib/rstudio-server/bin/rserver "$@"
             mode: '0755'
 
