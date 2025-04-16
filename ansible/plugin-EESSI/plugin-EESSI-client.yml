@@ -153,6 +153,7 @@
             content: |
               #!/bin/bash
               source /etc/profile.d/eessi_r.sh
+              export RSTUDIO_WHICH_R=/cvmfs/software.eessi.io/versions/2023.06/software/linux/x86_64/amd/zen2/software/R/4.4.1-gfbf-2023b/bin/R
               echo "DEBUG: RSTUDIO_WHICH_R is set to ${RSTUDIO_WHICH_R}" >&2
               exec /usr/lib/rstudio-server/bin/rserver "$@"
             mode: '0755'
