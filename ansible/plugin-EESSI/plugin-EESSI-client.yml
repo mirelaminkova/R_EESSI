@@ -134,7 +134,7 @@
       git:
         repo: 'https://github.com/rstudio/rstudio.git'
         dest: /opt/rstudio-src
-        version: master
+        version: v1.2.1335
         force: yes
 
     - name: Create EESSI environment patch #according to https://github.com/ComputeCanada/easybuild-easyconfigs/blob/computecanada-main/easybuild/easyconfigs/r/RStudio-Server/rstudio-1.2.1335.patch
