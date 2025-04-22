@@ -91,53 +91,92 @@
     - name: Gather facts for first time
       setup:
 
-    - name: Ubuntu - Install required packages
-      when: ansible_distribution == 'Ubuntu'
-      block:
-        - name: Install required packages
-          package:
-            name:
-              - apt-transport-https
-              - dpkg-sig
-              - gdebi-core
-              - libxml2-dev
-              - libcurl4-openssl-dev
-              - libssl-dev
-              - git
-            state: present
+    - name: Install RStudio build dependencies
+      apt:
+        name:
+          - build-essential
+          - g++
+          - libboost-all-dev
+          - libssl-dev
+          - libcurl4-openssl-dev
+          - libedit-dev
+          - qtbase5-dev
+          - qttools5-dev-tools
+          - libqt5svg5-dev
+          - pandoc
+          - git
+          - devscripts
+          - fakeroot
+        state: present
 
-        - name: Add an apt key by id from a keyserver
-          apt_key:
-            keyserver: keyserver.ubuntu.com
-            id: E298A3A825C0D65DFD57CBB651716619E084DAB9
+    - name: Add an apt key by id from a keyserver
+      apt_key:
+        keyserver: keyserver.ubuntu.com
+        id: E298A3A825C0D65DFD57CBB651716619E084DAB9
 
-        - name: Ensure RStudio repository is present
-          apt_repository:
-            repo: "deb https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/"
-            state: present
+    - name: Ensure RStudio repository is present
+      apt_repository:
+        repo: "deb https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/"
+        state: present
 
-        - name: Ensure RStudio server is installed
-          apt:
-            deb: "https://download2.rstudio.org/server/jammy/amd64/rstudio-server-2024.12.0-467-amd64.deb"
-            allow_unauthenticated: true
+    - name: Ensure RStudio server is installed
+      apt:
+        deb: "https://download2.rstudio.org/server/jammy/amd64/rstudio-server-2024.12.0-467-amd64.deb"
+        allow_unauthenticated: true
 
-        - name: Create nginx location block
-          copy:
-            src: r-studio.conf
-            dest: /etc/nginx/app-location-conf.d/r-studio.conf
-            mode: '0644'
+    - name: Create nginx location block
+      copy:
+        src: r-studio.conf
+        dest: /etc/nginx/app-location-conf.d/r-studio.conf
+        mode: '0644'
 
+    - name: Clone RStudio source repository
+      git:
+        repo: 'https://github.com/rstudio/rstudio.git'
+        dest: /opt/rstudio-src
+        version: master
+        force: yes
 
-        - name: Switch off session timeout and suspending to disk
-          copy:
-            content: |
-              # R Session Configuration File
-              session-timeout-minutes=0
-              session-timeout-suspend=0
-            dest: /etc/rstudio/rsession.conf
-            mode: 0644
+    - name: Create EESSI environment patch #according to https://github.com/ComputeCanada/easybuild-easyconfigs/blob/computecanada-main/easybuild/easyconfigs/r/RStudio-Server/rstudio-1.2.1335.patch
+      copy:
+        dest: /opt/rstudio-src/eessi-rstudio-env.patch
+        content: |
+          --- src/cpp/core/system/PosixSystem.cpp
+          +++ src/cpp/core/system/PosixSystem.cpp
+          @@ -2195,6 +2195,7 @@
+           
+             // setup environment
+             core::system::Options env;
+          +   core::system::environment(&env);
+             copyEnvironmentVar("PATH", &env);
+             copyEnvironmentVar("MANPATH", &env);
+             copyEnvironmentVar("LANG", &env);
 
-    - name: Ensure RStudio Server configuration file has the correct R binary path
+    - name: Apply EESSI patch to RStudio source
+      shell: |
+        cd /opt/rstudio-src
+        patch -p1 < eessi-rstudio-env.patch
+
+    - name: Build RStudio using EESSI CMake
+      shell: |
+        source /etc/profile.d/eessi_r.sh
+        mkdir -p /opt/rstudio-src/build
+        cd /opt/rstudio-src/build
+        cmake .. -DRSTUDIO_TARGET=Server -DCMAKE_BUILD_TYPE=Release
+        make -j$(nproc)
+      args:
+        executable: /bin/bash
+
+    - name: Switch off session timeout and suspending to disk
+      copy:
+        content: |
+          # R Session Configuration File
+          session-timeout-minutes=0
+          session-timeout-suspend=0
+        dest: /etc/rstudio/rsession.conf
+        mode: 0644
+
+    - name: RStudio Server configuration file has the correct R path
       become: yes
       lineinfile:
         path: /etc/rstudio/rserver.conf
